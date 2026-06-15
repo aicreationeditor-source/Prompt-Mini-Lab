@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<!--
+  Prompt Mini Lab v2.2.1
+  공개용 단일 HTML 파일입니다.
+  fix: 배경 포함 모드에서 투명/알파 관련 문구가 남지 않도록 보정
+  기능: ASMR 프롬프트 조합기 + 웹소설 표지 타이포 프롬프트 랩
+-->
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Prompt Mini Lab v2.2.1 · ASMR + 표지 타이포</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400&family=JetBrains+Mono:wght@400;500;700&family=Pretendard:wght@300;400;500;600;700;800;900&family=Noto+Serif+KR:wght@400;700;900&family=Playfair+Display:wght@400;700;900&family=Orbitron:wght@500;700;900&family=Creepster&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-0:#0a0a0f; --bg-1:#12121a; --bg-2:#1a1a26; --bg-3:#242434; --bg-4:#2e2e42;
+  --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14); --line-3:rgba(255,255,255,.22);
+  --txt-0:#fafafa; --txt-1:#e5e5ed; --txt-2:#9999a8; --txt-3:#5c5c6e;
+  --pink:#ffb3c7; --blue:#b8e0ff; --gold:#e8c87a; --green:#c4f0c4; --purple:#d4b8ff;
+  --asmr:#d4b8ff; --typo:#e8c87a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg-0);color:var(--txt-0);font-family:'Pretendard',sans-serif;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 45% at 18% 0%, rgba(212,184,255,.08), transparent 55%),
+    radial-gradient(ellipse 55% 40% at 85% 100%, rgba(232,200,122,.06), transparent 55%);}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
+
+/* ===== Header / 상단 네비게이션 ===== */
+.topbar{position:sticky;top:0;z-index:40;background:rgba(10,10,15,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.topbar-inner{max-width:1180px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.tb-mark{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.28em;color:var(--txt-2);text-transform:uppercase;white-space:nowrap}
+.tb-mark b{color:var(--gold)}
+.tb-spacer{flex:1}
+.switch{display:flex;gap:4px;background:var(--bg-1);border:1px solid var(--line);border-radius:12px;padding:4px}
+.switch button{border:none;background:transparent;color:var(--txt-2);font-size:13px;font-weight:600;padding:9px 14px;border-radius:9px;transition:all .25s;display:flex;align-items:center;gap:7px}
+.switch button .em{font-size:14px}
+.switch button:hover{color:var(--txt-0)}
+.switch button.active{background:var(--bg-3);color:var(--txt-0)}
+.switch button.active[data-go="asmr"]{box-shadow:inset 0 0 0 1px rgba(212,184,255,.35);color:var(--asmr)}
+.switch button.active[data-go="typo"]{box-shadow:inset 0 0 0 1px rgba(232,200,122,.35);color:var(--typo)}
+
+.wrap{max-width:1180px;margin:0 auto;padding:34px 20px 90px;position:relative;z-index:2}
+.view{display:none}
+.view.on{display:block;animation:rise .4s cubic-bezier(.2,.7,.3,1)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ===== Home / 시작 화면 ===== */
+.hero-mark{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.3em;color:var(--purple);text-transform:uppercase;margin-bottom:12px}
+.hero-h1{font-family:'Fraunces',serif;font-weight:300;font-size:clamp(40px,7vw,76px);line-height:.92;letter-spacing:-.03em}
+.hero-h1 em{font-style:italic;font-weight:800;background:linear-gradient(115deg,var(--purple),var(--pink) 55%,var(--gold));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero-lead{margin-top:16px;max-width:520px;color:var(--txt-2);font-size:14px;line-height:1.7}
+.stations{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:40px}
+.station{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:20px;padding:30px 26px 26px;background:linear-gradient(180deg,var(--bg-1),var(--bg-2));transition:transform .3s,border-color .3s;cursor:pointer;text-align:left}
+.station::before{content:'';position:absolute;inset:0 0 auto 0;height:1px}
+.station:hover{transform:translateY(-4px)}
+.station[data-go="asmr"]::before{background:linear-gradient(90deg,transparent,rgba(212,184,255,.5),transparent)}
+.station[data-go="asmr"]:hover{border-color:rgba(212,184,255,.45)}
+.station[data-go="typo"]::before{background:linear-gradient(90deg,transparent,rgba(232,200,122,.5),transparent)}
+.station[data-go="typo"]:hover{border-color:rgba(232,200,122,.45)}
+.st-no{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.22em;color:var(--txt-3);text-transform:uppercase}
+.st-glyph{font-size:46px;line-height:1;margin:14px 0 18px;filter:drop-shadow(0 6px 18px rgba(0,0,0,.5))}
+.st-name{font-family:'Fraunces',serif;font-size:26px;font-weight:600;letter-spacing:-.01em}
+.st-name em{font-style:italic}
+.st-ko{font-size:13px;color:var(--txt-1);margin-top:4px;font-weight:600}
+.st-desc{font-size:12.5px;color:var(--txt-2);line-height:1.6;margin-top:12px}
+.st-enter{margin-top:20px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;color:var(--txt-2);display:flex;align-items:center;gap:8px}
+.station[data-go="asmr"] .st-enter{color:var(--asmr)}
+.station[data-go="typo"] .st-enter{color:var(--typo)}
+.st-enter .arr{transition:transform .3s}
+.station:hover .st-enter .arr{transform:translateX(5px)}
+
+/* ===== Station Header / 작업대 공통 헤더 ===== */
+.s-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.s-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.26em;text-transform:uppercase;margin-bottom:7px}
+.s-eyebrow.a{color:var(--asmr)} .s-eyebrow.t{color:var(--typo)}
+.s-title{font-family:'Fraunces',serif;font-size:clamp(26px,4vw,38px);font-weight:300;letter-spacing:-.02em}
+.s-title em{font-style:italic;font-weight:700}
+.view#v-asmr .s-title em{color:var(--asmr)} .view#v-typo .s-title em{color:var(--typo)}
+.s-sub{font-size:12.5px;color:var(--txt-2);margin-top:6px;max-width:440px;line-height:1.6}
+.s-tools{display:flex;gap:8px}
+.icon-btn{width:42px;height:42px;border-radius:11px;background:var(--bg-2);border:1px solid var(--line);color:var(--txt-1);font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.icon-btn:hover{border-color:var(--line-3);background:var(--bg-3)}
+
+/* ===== ASMR Builder / 조합 슬롯 ===== */
+.slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px}
+.slot{position:relative;background:var(--bg-2);border:1px solid var(--line);border-radius:13px;padding:14px 14px 13px;transition:all .22s;text-align:left;display:flex;flex-direction:column;gap:5px;min-height:96px}
+.slot:hover{border-color:rgba(212,184,255,.4);background:var(--bg-3);transform:translateY(-2px)}
+.slot.locked{border-color:var(--gold);background:rgba(232,200,122,.06)}
+.slot-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--txt-3);display:flex;align-items:center;gap:6px}
+.slot-ko{font-size:15px;font-weight:700;color:var(--txt-0);line-height:1.25}
+.slot-en{font-size:10.5px;color:var(--txt-2);line-height:1.45}
+.slot-lock{position:absolute;top:9px;right:9px;background:none;border:none;font-size:13px;color:var(--txt-3);padding:3px;line-height:1;transition:color .2s}
+.slot-lock:hover{color:var(--gold)} .slot.locked .slot-lock{color:var(--gold)}
+.slot-cyc{position:absolute;bottom:8px;right:9px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt-3);opacity:.7}
+
+.gen-row{margin-top:18px}
+.btn-gen{width:100%;border:none;border-radius:13px;padding:16px;font-size:14.5px;font-weight:800;color:#1a1a26;background:linear-gradient(120deg,var(--purple),var(--blue));box-shadow:0 6px 20px rgba(212,184,255,.22);transition:transform .2s,box-shadow .2s}
+.btn-gen:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(212,184,255,.32)}
+
+.out{margin-top:18px;background:var(--bg-1);border:1px solid var(--line-2);border-radius:15px;overflow:hidden}
+.out-sec{padding:18px 20px}
+.out-sec+.out-sec{border-top:1px solid var(--line)}
+.out-label{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--txt-3);margin-bottom:9px;display:flex;align-items:center;gap:7px}
+.out-label .dot{width:6px;height:6px;border-radius:50%}
+.out-label.pos .dot{background:var(--green)} .out-label.neg .dot{background:var(--pink)}
+.out-text{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.85;color:var(--txt-1);white-space:pre-wrap;word-break:break-word}
+.out-text.neg{color:var(--txt-2)}
+.copy-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.copy-btn{background:var(--bg-2);border:1px solid var(--line-2);color:var(--txt-1);border-radius:10px;padding:11px 16px;font-size:12.5px;font-weight:600;transition:all .2s}
+.copy-btn:hover{border-color:var(--purple);color:var(--purple)}
+.copy-btn.full{flex:1;min-width:140px;font-weight:800;background:var(--bg-3)}
+
+.bank-block{margin-top:40px}
+.bank-head{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--txt-3);padding-bottom:11px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.bank-desc{font-size:12px;color:var(--txt-2);margin-bottom:16px}
+.bank-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.bank-card{background:var(--bg-1);border:1px solid var(--line);border-radius:14px;padding:16px;transition:all .2s;text-align:left}
+.bank-card:hover{border-color:rgba(212,184,255,.45);background:var(--bg-2);transform:translateY(-2px)}
+.bank-num{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt-3);margin-bottom:6px}
+.bank-title{font-size:13.5px;font-weight:700;margin-bottom:4px}
+.bank-sub{font-size:10.5px;color:var(--txt-2);line-height:1.5}
+
+/* ===== Cover Type Lab / 제목 입력 도구 ===== */
+.t-toolbar{background:var(--bg-1);border:1px solid var(--line);border-radius:15px;padding:16px 18px;display:flex;flex-direction:column;gap:14px;margin-bottom:20px}
+.tb-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.tb-tag{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--txt-3);min-width:64px}
+.title-input{flex:1;min-width:180px;background:var(--bg-0);border:1px solid var(--line-2);border-radius:11px;padding:13px 15px;color:var(--txt-0);font-size:14px;font-family:inherit}
+.title-input::placeholder{color:var(--txt-3)}
+.title-input:focus{outline:none;border-color:var(--typo)}
+.title-clear{width:40px;height:42px;border-radius:10px;background:var(--bg-2);border:1px solid var(--line);color:var(--txt-2);font-size:13px}
+.title-clear:hover{color:var(--pink);border-color:var(--line-3)}
+.wt-slider{flex:1;min-width:140px;accent-color:var(--typo);height:4px}
+.wt-val{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--typo);min-width:34px;text-align:right}
+
+.preview{position:relative;border:1px dashed var(--line-2);border-radius:15px;background:radial-gradient(ellipse at 50% 40%,rgba(232,200,122,.05),transparent 70%),var(--bg-0);min-height:128px;display:flex;align-items:center;justify-content:center;padding:26px 20px;margin-bottom:22px;overflow:hidden}
+.preview-badge{position:absolute;top:11px;left:14px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--txt-3)}
+.preview-text{font-size:clamp(28px,6vw,52px);line-height:1.1;text-align:center;color:var(--txt-0);word-break:keep-all}
+
+.gtabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:18px}
+.gtab{background:var(--bg-1);border:1px solid var(--line);color:var(--txt-2);border-radius:11px;padding:10px 15px;font-size:13px;font-weight:600;transition:all .2s;display:flex;align-items:center;gap:7px}
+.gtab:hover{color:var(--txt-0);border-color:var(--line-3)}
+.gtab.active{color:#1a1a26;border-color:transparent;background:linear-gradient(120deg,var(--gold),#f0dca0);font-weight:800}
+
+.t-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:11px}
+.t-card{background:var(--bg-1);border:1px solid var(--line);border-radius:15px;padding:18px;transition:all .2s;text-align:left;position:relative;overflow:hidden}
+.t-card::before{content:'';position:absolute;inset:0 0 auto 0;height:1px;background:linear-gradient(90deg,transparent,rgba(232,200,122,.4),transparent);opacity:0;transition:opacity .2s}
+.t-card:hover{border-color:rgba(232,200,122,.45);background:var(--bg-2);transform:translateY(-3px)}
+.t-card:hover::before{opacity:1}
+.t-num{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--txt-3);margin-bottom:8px}
+.t-cardtitle{font-size:18px;font-weight:700;line-height:1.3;margin-bottom:6px}
+.t-cardsub{font-size:11.5px;color:var(--txt-2);line-height:1.5}
+.t-go{margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--typo);display:flex;align-items:center;gap:6px}
+
+/* ===== Prompt Modal / 프롬프트 보기 창 ===== */
+.overlay{position:fixed;inset:0;z-index:60;background:rgba(5,5,9,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px}
+.overlay.on{display:flex;animation:fade .25s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{width:min(640px,100%);max-height:86vh;display:flex;flex-direction:column;background:var(--bg-1);border:1px solid var(--line-2);border-radius:20px;overflow:hidden;animation:pop .3s cubic-bezier(.2,.8,.3,1)}
+@keyframes pop{from{transform:translateY(16px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+.m-head{padding:20px 22px 14px;border-bottom:1px solid var(--line)}
+.m-num{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;color:var(--typo);margin-bottom:6px}
+.m-title{font-family:'Fraunces',serif;font-size:22px;font-weight:600}
+.m-mode{display:inline-block;margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;padding:5px 10px;border-radius:7px;background:rgba(184,224,255,.1);border:1px solid rgba(184,224,255,.3);color:var(--blue)}
+.m-mode.bg{background:rgba(232,200,122,.1);border-color:rgba(232,200,122,.35);color:var(--typo)}
+.m-body{padding:18px 22px;overflow:auto}
+.m-prompt{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.85;color:var(--txt-1);white-space:pre-wrap;word-break:break-word}
+.m-toggle{padding:0 22px 4px}
+.btn-toggle{width:100%;background:var(--bg-2);border:1px solid var(--line-2);color:var(--txt-1);border-radius:11px;padding:12px;font-size:12.5px;font-weight:600;transition:all .2s}
+.btn-toggle:hover{border-color:var(--line-3)}
+.btn-toggle.on{background:rgba(232,200,122,.1);border-color:rgba(232,200,122,.4);color:var(--typo)}
+.m-foot{display:flex;gap:9px;padding:14px 22px 20px}
+.btn-copy{flex:1;background:linear-gradient(120deg,var(--gold),#f0dca0);color:#1a1a26;border:none;border-radius:11px;padding:14px;font-size:13.5px;font-weight:800;transition:transform .2s}
+.btn-copy:hover{transform:translateY(-2px)}
+.btn-close{background:var(--bg-2);border:1px solid var(--line);color:var(--txt-2);border-radius:11px;padding:14px 20px;font-size:13px;font-weight:600}
+.btn-close:hover{color:var(--txt-0)}
+
+/* ===== Toast / 복사 알림 ===== */
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);z-index:90;background:var(--bg-3);border:1px solid var(--line-3);color:var(--txt-0);padding:13px 22px;border-radius:12px;font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:all .3s;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width:680px){
+  .stations{grid-template-columns:1fr}
+  .switch button .lbl{display:none}
+  .switch button{padding:10px 13px}
+  .slot-grid{grid-template-columns:1fr 1fr}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="tb-mark"><b>PROMPT</b> MINI LAB</span>
+    <div class="tb-spacer"></div>
+    <div class="switch" id="switch">
+      <button data-go="home" class="active"><span class="em">⌂</span><span class="lbl">작업대</span></button>
+      <button data-go="asmr"><span class="em">🎧</span><span class="lbl">ASMR</span></button>
+      <button data-go="typo"><span class="em">📚</span><span class="lbl">표지</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ================= HOME ================= -->
+  <section class="view on" id="v-home">
+    <div class="hero-mark">◈ 2-STATION CREATIVE DESK</div>
+    <h1 class="hero-h1">prompt <em>mini lab</em></h1>
+    <p class="hero-lead">부품을 조합해 ASMR 프롬프트를 만들고, 제목을 넣어 웹소설 표지 타이포를 뽑습니다.</p>
+
+    <div class="stations">
+      <button class="station" data-go="asmr">
+        <div class="st-no">Station 01</div>
+        <div class="st-glyph">🎧</div>
+        <div class="st-name"><em>ASMR</em> Alchemy</div>
+        <div class="st-ko">ASMR 연금술 · 부품 조합 엔진</div>
+        <div class="st-desc">재료·질감·동작·조명·배경·무드·카메라 7개 슬롯을 굴려 이미지/영상 프롬프트를 즉석 조합. 바로 쓰는 프리셋 뱅크도 함께.</div>
+        <div class="st-enter">작업대 들어가기 <span class="arr">→</span></div>
+      </button>
+
+      <button class="station" data-go="typo">
+        <div class="st-no">Station 02</div>
+        <div class="st-glyph">📚</div>
+        <div class="st-name"><em>Cover</em> Type Lab</div>
+        <div class="st-ko">표지 타이포 · 제목 자동 반영</div>
+        <div class="st-desc">제목을 한 번 입력하면 모든 카드 프롬프트에 반영. 로판·무협·SF·공포 장르별 타이포와 투명/배경 토글까지.</div>
+        <div class="st-enter">작업대 들어가기 <span class="arr">→</span></div>
+      </button>
+    </div>
+  </section>
+
+  <!-- ================= ASMR ================= -->
+  <section class="view" id="v-asmr">
+    <div class="s-head">
+      <div>
+        <div class="s-eyebrow a">◉ Object Alchemy</div>
+        <h2 class="s-title">오브젝트 <em>조합기</em></h2>
+        <p class="s-sub">슬롯을 탭하면 원하는 부품으로 바뀝니다. 🔒로 고정한 뒤 🎲 새 조합 만들기를 누르면 잠기지 않은 슬롯만 새로 섞여요.</p>
+      </div>
+      <div class="s-tools">
+        <button class="icon-btn" id="btn-shuffle" title="전체 랜덤">🎲</button>
+        <button class="icon-btn" id="btn-unlock" title="모두 잠금해제">🔓</button>
+      </div>
+    </div>
+
+    <div class="slot-grid" id="slot-grid"></div>
+
+    <div class="gen-row">
+      <button class="btn-gen" id="btn-gen">🎲 새 조합 만들기</button>
+    </div>
+
+    <div class="out">
+      <div class="out-sec">
+        <div class="out-label pos"><span class="dot"></span>Positive Prompt</div>
+        <div class="out-text" id="out-pos">슬롯을 조합하고 ⚡ 버튼을 눌러주세요</div>
+      </div>
+      <div class="out-sec">
+        <div class="out-label neg"><span class="dot"></span>Negative Prompt</div>
+        <div class="out-text neg" id="out-neg">—</div>
+      </div>
+    </div>
+    <div class="copy-row">
+      <button class="copy-btn" data-acopy="pos">+ Positive</button>
+      <button class="copy-btn" data-acopy="neg">- Negative</button>
+      <button class="copy-btn full" data-acopy="full">📋 전체 복사</button>
+    </div>
+
+    <div class="bank-block">
+      <div class="bank-head">◈ 즉시뱅크 · Instant Bank</div>
+      <div class="bank-desc">바로 쓸 수 있는 완성 프리셋. 탭하면 위 출력창에 그대로 불러옵니다.</div>
+      <div class="bank-grid" id="bank-grid"></div>
+    </div>
+  </section>
+
+  <!-- ================= TYPO ================= -->
+  <section class="view" id="v-typo">
+    <div class="s-head">
+      <div>
+        <div class="s-eyebrow t">📚 Cover Type Lab</div>
+        <h2 class="s-title">표지 <em>타이포</em></h2>
+        <p class="s-sub">제목을 입력하면 미리보기와 모든 프롬프트에 자동 반영됩니다. 카드를 탭하면 전체 프롬프트와 투명/배경 토글이 열려요.</p>
+      </div>
+    </div>
+
+    <div class="t-toolbar">
+      <div class="tb-row">
+        <span class="tb-tag">제목 입력</span>
+        <input class="title-input" id="title-input" type="text" placeholder="예: 달에 삼켜지다  ← 모든 프롬프트에 반영" />
+        <button class="title-clear" id="title-clear" title="초기화">✕</button>
+      </div>
+      <div class="tb-row">
+        <span class="tb-tag">폰트 굵기</span>
+        <input class="wt-slider" id="wt-slider" type="range" min="300" max="900" step="100" value="700" />
+        <span class="wt-val" id="wt-val">700</span>
+      </div>
+    </div>
+
+    <div class="preview">
+      <span class="preview-badge">표지 미리보기</span>
+      <div class="preview-text" id="preview-text">제목을 입력하세요</div>
+    </div>
+
+    <div class="gtabs" id="gtabs"></div>
+    <div class="t-grid" id="t-grid"></div>
+  </section>
+
+</div>
+
+<!-- modal -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="m-head">
+      <div class="m-num" id="m-num"></div>
+      <div class="m-title" id="m-title"></div>
+      <div class="m-mode" id="m-mode">🫧 출력: 투명 배경용 프롬프트</div>
+    </div>
+    <div class="m-body"><div class="m-prompt" id="m-prompt"></div></div>
+    <div class="m-toggle">
+      <button class="btn-toggle" id="btn-toggle">🌄 배경 넣기</button>
+    </div>
+    <div class="m-foot">
+      <button class="btn-copy" id="btn-mcopy">COPY PROMPT</button>
+      <button class="btn-close" id="btn-mclose">닫기</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">복사 완료</div>
+
+<script>
+/* =========================================================
+   Prompt Mini Lab
+   ASMR prompt builder + Korean web novel title typography lab.
+   Public mini build with a compact preset set.
+   ========================================================= */
+
+/* ---------- 공통 유틸: 복사 알림 + 클립보드 ---------- */
+const toast = document.getElementById('toast');
+let toastTimer;
+function ping(msg){
+  toast.textContent = msg || '복사 완료';
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>toast.classList.remove('show'), 1600);
+}
+async function copyText(t){
+  try{ await navigator.clipboard.writeText(t); }
+  catch(e){
+    const ta=document.createElement('textarea');
+    ta.value=t; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); }catch(_){}
+    document.body.removeChild(ta);
+  }
+  ping('✓ 복사되었습니다');
+}
+function splitPN(raw){
+  const i = raw.indexOf('[NEGATIVE]');
+  if(i<0) return {pos: raw.replace('[POSITIVE]','').trim(), neg:''};
+  return {
+    pos: raw.slice(0,i).replace('[POSITIVE]','').trim(),
+    neg: raw.slice(i).replace('[NEGATIVE]','').trim()
+  };
+}
+
+/* ---------- 화면 전환 ---------- */
+const views = {home:'v-home', asmr:'v-asmr', typo:'v-typo'};
+function go(name){
+  Object.values(views).forEach(id=>document.getElementById(id).classList.remove('on'));
+  document.getElementById(views[name]).classList.add('on');
+  document.querySelectorAll('#switch button').forEach(b=>b.classList.toggle('active', b.dataset.go===name));
+  window.scrollTo({top:0, behavior:'instant' in window ? 'instant':'auto'});
+}
+document.getElementById('switch').addEventListener('click', e=>{
+  const b=e.target.closest('button'); if(b) go(b.dataset.go);
+});
+document.querySelectorAll('.station').forEach(s=>s.addEventListener('click', ()=>go(s.dataset.go)));
+
+/* =========================================================
+   Station 01 — ASMR Prompt Builder
+   ========================================================= */
+const ASMR_SLOTS = [
+  {key:'material', ko:'재료', icon:'🍯', items:[
+    ['딸기우유','pastel pink strawberry milk'],['꿀','golden amber honey'],
+    ['캐러멜','liquid caramel sauce'],['초콜릿','melted dark chocolate'],
+    ['생크림','fluffy whipped cream'],['클리어슬라임','crystal clear slime'],
+    ['젤리','wobbling translucent jelly'],['얼음','crystal clear ice cubes'],
+    ['레진','crystal epoxy resin'],['탄산수','fizzing sparkling water'],
+    ['딸기','fresh red strawberry'],['마카롱','pastel macaron tower']
+  ]},
+  {key:'texture', ko:'질감', icon:'✨', items:[
+    ['크리미한','creamy smooth'],['광택있는','glossy shiny'],
+    ['투명한','crystal translucent'],['끈적한','sticky viscous'],
+    ['쫀득한','chewy stretchy'],['말랑한','soft wobbly'],
+    ['탱글한','bouncy springy'],['벨벳같은','velvety soft'],
+    ['솜털같은','fluffy airy'],['거품같은','foamy frothy'],
+    ['젤리같은','jelly-like translucent'],['꿀같은','honey-thick amber']
+  ]},
+  {key:'action', ko:'동작', icon:'💧', items:[
+    ['천천히 흘림','slowly pouring'],['뚝뚝 떨어짐','dripping in droplets'],
+    ['주르륵 흐름','streaming downward'],['퍼져나감','spreading outward'],
+    ['번짐','bleeding outward'],['스며듬','soaking through'],
+    ['튀김','splashing droplets'],['실처럼 늘어남','stretching like thread'],
+    ['천천히 자르기','slowly slicing'],['깨뜨림','shattering breaking'],
+    ['으깸','crushing pressing'],['꾹 누름','firm pressing down']
+  ]},
+  {key:'lighting', ko:'조명', icon:'💡', items:[
+    ['소프트 백라이트','soft backlight glow'],['림라이트','rim lighting halo'],
+    ['창가 햇살','sunlit window light'],['황금시간','golden hour glow'],
+    ['노을빛','sunset orange light'],['블루아워','blue hour twilight'],
+    ['하얀 스튜디오','bright studio lighting'],['소프트박스','softbox diffused light'],
+    ['링라이트','ring light circular'],['네온라이트','neon glow lighting'],
+    ['아침햇살','morning sunlight rays'],['사이드라이트','dramatic side lighting']
+  ]},
+  {key:'background', ko:'배경', icon:'🎬', items:[
+    ['흰 스튜디오','clean white seamless studio'],['핑크 배경','soft pastel pink background'],
+    ['베이비블루','baby blue gradient backdrop'],['라벤더 배경','lavender pastel backdrop'],
+    ['피치 배경','peach gradient background'],['검정 무광','matte black void backdrop'],
+    ['다크네이비','dark navy moody backdrop'],['에메랄드','emerald velvet backdrop'],
+    ['흰 대리석','white marble surface'],['검은 대리석','black marble polished'],
+    ['핑크 대리석','pink marble veined'],['유리 테이블','glass table reflective']
+  ]},
+  {key:'mood', ko:'무드', icon:'🌙', items:[
+    ['몽환적인','dreamy ethereal'],['동화같은','fairytale whimsical'],
+    ['판타지','fantasy magical'],['마법같은','enchanting magical'],
+    ['신비로운','mystical mysterious'],['천상의','celestial heavenly'],
+    ['평화로운','serene peaceful'],['고요한','tranquil silent'],
+    ['명상적인','meditative zen'],['아늑한','cozy intimate'],
+    ['따뜻한','warm comforting'],['포근한','snug comforting']
+  ]},
+  {key:'camera', ko:'카메라', icon:'📷', items:[
+    ['익스트림 클로즈업','extreme close-up macro shot'],['매크로','macro photography ultra detail'],
+    ['클로즈업','close-up tight shot'],['미디엄샷','medium framing'],
+    ['와이드샷','wide establishing shot'],['버드아이뷰','birds eye top-down view'],
+    ['플랫레이','flat lay overhead'],['하이앵글','high angle shot'],
+    ['로우앵글','low angle shot'],['더치앵글','dutch angle tilted'],
+    ['얕은 심도','shallow depth of field'],['보케배경','creamy bokeh background']
+  ]}
+];
+
+const ASMR_BANK = [
+  {num:'A16', title:'탕후루 유리막 깨기', sub:'딸기 · 설탕코팅 · 와작 크랙',
+   prompt:`[POSITIVE]
+extreme macro ASMR, glass sugar coated strawberries, thin transparent candy shell cracking under gentle pressure, tiny sugar shards sparkling, glossy red fruit visible beneath, slow motion 120fps, clean black acrylic plate, crisp tactile visual, bright specular highlights, satisfying crackle texture, ultra realistic
+
+[NEGATIVE]
+people, hands dominating frame, messy background, blood, injury, text, watermark, blurry`},
+  {num:'A17', title:'말차 파우더 더스팅', sub:'녹차가루 · 크림 · 보송한 입자',
+   prompt:`[POSITIVE]
+top-down macro ASMR, velvety matcha powder dusting over thick white cream, soft green particles blooming in air, powder settling slowly, ceramic palette surface, milky diffused lighting, delicate particulate texture, calming dessert ritual, ultra detailed
+
+[NEGATIVE]
+clutter, harsh shadows, low quality, overexposed, text, watermark`},
+  {num:'A19', title:'장미 왁스 봉인', sub:'녹은 왁스 · 금박 · 스탬프',
+   prompt:`[POSITIVE]
+cinematic macro ASMR, rose pink melted sealing wax poured onto aged parchment, gold leaf flakes floating on surface, brass stamp pressing slowly, wax edge cooling and hardening, candlelit desk, romantic fantasy stationery aesthetic, tactile glossy wax texture
+
+[NEGATIVE]
+modern plastic, messy typography, watermark, oversaturated, low detail`},
+  {num:'A21', title:'타피오카펄 쏟기', sub:'버블티 · 펄 · 유리컵 달그락',
+   prompt:`[POSITIVE]
+macro ASMR, glossy black tapioca pearls pouring into a clear glass cup, pearls bouncing and stacking with tiny wet highlights, creamy milk tea swirl behind them, slow motion, warm cafe lighting, satisfying round texture, clean composition
+
+[NEGATIVE]
+people, crowded cafe, text, logo, watermark, blur`},
+  {num:'A23', title:'보호필름 벗김', sub:'투명 아크릴 · 깨끗한 쾌감',
+   prompt:`[POSITIVE]
+ultra clean macro ASMR, peeling protective film from clear acrylic sheet, film curling smoothly, static sparkle, pristine glossy surface revealed underneath, white studio light, slow satisfying motion, crisp transparent texture
+
+[NEGATIVE]
+dirty scratches, hands blocking view, text, watermark, low resolution`},
+  {num:'A25', title:'젤 캡슐 팝', sub:'투명 캡슐 · 물방울 · 탱글',
+   prompt:`[POSITIVE]
+extreme macro ASMR, soft transparent gel capsules gently popping under a glass press, clear liquid beads spreading, bouncy membrane texture, cool laboratory lighting, satisfying tiny burst motion, clean composition
+
+[NEGATIVE]
+medical gore, injury, blood, messy hands, text, watermark`}
+];
+
+const ASMR_NEG = `people, hands dominating frame, messy background, blood, injury, blurry, low quality, distorted, text, watermark, oversaturated`;
+
+const aState = { idx:{}, lock:{} };
+ASMR_SLOTS.forEach(s=>{ aState.idx[s.key]=0; aState.lock[s.key]=false; });
+
+function renderSlots(){
+  const grid = document.getElementById('slot-grid');
+  grid.innerHTML = '';
+  ASMR_SLOTS.forEach(s=>{
+    const it = s.items[aState.idx[s.key]];
+    const el = document.createElement('div');
+    el.className = 'slot' + (aState.lock[s.key]?' locked':'');
+    el.setAttribute('role','button');
+    el.setAttribute('tabindex','0');
+    el.innerHTML = `
+      <button type="button" class="slot-lock" data-lock="${s.key}" title="고정">${aState.lock[s.key]?'🔒':'🔓'}</button>
+      <div class="slot-label">${s.icon} ${s.ko}</div>
+      <div class="slot-ko">${it[0]}</div>
+      <div class="slot-en">${it[1]}</div>
+      <span class="slot-cyc">${aState.idx[s.key]+1}/${s.items.length}</span>`;
+    const nextSlot = ()=>{
+      if(aState.lock[s.key]) return;
+      aState.idx[s.key] = (aState.idx[s.key]+1) % s.items.length;
+      renderSlots();
+      generateASMR(false);
+    };
+    el.addEventListener('click', ev=>{
+      if(ev.target.closest('.slot-lock')) return;
+      nextSlot();
+    });
+    el.addEventListener('keydown', ev=>{
+      if(ev.key==='Enter' || ev.key===' '){ ev.preventDefault(); nextSlot(); }
+    });
+    el.querySelector('.slot-lock').addEventListener('click', ()=>{
+      aState.lock[s.key] = !aState.lock[s.key];
+      renderSlots();
+    });
+    grid.appendChild(el);
+  });
+}
+
+function sel(key){ const s=ASMR_SLOTS.find(x=>x.key===key); return s.items[aState.idx[key]]; }
+function shuffleUnlocked(){
+  ASMR_SLOTS.forEach(s=>{
+    if(!aState.lock[s.key]) aState.idx[s.key] = Math.floor(Math.random()*s.items.length);
+  });
+}
+function currentRecipeName(){
+  return `${sel('mood')[0]} ${sel('material')[0]} · ${sel('action')[0]}`;
+}
+function generateASMR(showToast=true){
+  const pos =
+`ASMR macro shot, ${sel('camera')[1]}, ${sel('texture')[1]} ${sel('material')[1]}, ${sel('action')[1]},
+${sel('lighting')[1]}, ${sel('background')[1]}, ${sel('mood')[1]} mood,
+satisfying tactile texture, ultra detailed, clean minimal composition, high quality render`;
+  document.getElementById('out-pos').textContent = pos;
+  document.getElementById('out-neg').textContent = ASMR_NEG;
+  if(showToast) ping('🎧 ' + currentRecipeName() + ' 생성됨');
+}
+function makeNewASMR(){
+  shuffleUnlocked();
+  renderSlots();
+  generateASMR(true);
+}
+
+function renderBank(){
+  const grid = document.getElementById('bank-grid');
+  grid.innerHTML = '';
+  ASMR_BANK.forEach(b=>{
+    const c = document.createElement('button');
+    c.className='bank-card';
+    c.innerHTML = `<div class="bank-num">${b.num}</div><div class="bank-title">${b.title}</div><div class="bank-sub">${b.sub}</div>`;
+    c.addEventListener('click', ()=>{
+      const {pos,neg} = splitPN(b.prompt);
+      document.getElementById('out-pos').textContent = pos;
+      document.getElementById('out-neg').textContent = neg || '—';
+      ping('🎧 ' + b.title + ' 불러옴');
+      document.querySelector('.out').scrollIntoView({behavior:'smooth', block:'center'});
+    });
+    grid.appendChild(c);
+  });
+}
+
+document.getElementById('btn-gen').addEventListener('click', makeNewASMR);
+document.getElementById('btn-shuffle').addEventListener('click', makeNewASMR);
+document.getElementById('btn-unlock').addEventListener('click', ()=>{
+  ASMR_SLOTS.forEach(s=>aState.lock[s.key]=false); renderSlots();
+});
+document.querySelectorAll('[data-acopy]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const pos = document.getElementById('out-pos').textContent;
+    const neg = document.getElementById('out-neg').textContent;
+    const mode = btn.dataset.acopy;
+    if(mode==='pos') copyText(pos);
+    else if(mode==='neg') copyText(neg);
+    else copyText(`[POSITIVE]\n${pos}\n\n[NEGATIVE]\n${neg}`);
+  });
+});
+
+/* =========================================================
+   Station 02 — Cover Typography Lab
+   ========================================================= */
+const GENRES = [
+  { key:'로판', icon:'👑', font:"'Playfair Display', serif", data:[
+    {num:'R01', title:'황금의 공주님', sub:'금박 왕관 + 진주빛 궁전 장식',
+     prompt:`[POSITIVE]
+((web novel Korean title typography design)), title text concept: "황금의 공주님",
+soft ivory-pink royal palace backdrop with faint silk curtain glow, pearl dust bokeh, delicate champagne light.
+
+Font Style: ultra-elegant romantic calligraphy serif, dramatic thick-to-thin stroke contrast,
+sweeping ascenders with soft ribbon-like terminals, hand-drawn luxury title lettering.
+
+Letter Treatment: 24-karat liquid gold leaf coating every stroke, polished hammered gold texture,
+champagne pearlescent highlights, soft inner glow around the upper curves of each letter.
+
+Decoration Motif: miniature imperial crown floating above the title centerpoint,
+tiny pearls and lace-like gold filigree curling around the first and last characters,
+small satin ribbon bow under the title, twin laurel arcs placed lightly behind the lettering.
+
+Color Palette: 24K gold (#FFD700 → #C8960C), champagne ivory (#FFF5CC), pearl white (#FAF7EF),
+soft rose blush (#F8C8D8), dark amber shadow (#4A2800).
+
+Atmosphere: elegant princess romance, refined opulence, soft royal fantasy, sparkling and graceful.
+Technical: ultra-sharp vector-quality render, crisp Korean lettering, 4K professional ebook cover standard.
+
+[NEGATIVE]
+people, characters, faces, body parts, blurry text, distorted letters, misspelled text,
+watermark, low resolution, harsh horror mood, weapon motif, dark bloody theme`},
+    {num:'R02', title:'장미 궁전의 약속', sub:'장미 금장 + 새벽빛 궁전 로맨스',
+     prompt:`[POSITIVE]
+((web novel Korean title typography design)), title text concept: "장미 궁전의 약속",
+warm dawn palace garden backdrop, blurred rose archway, soft marble glow, faint glittering dust in the air.
+
+Font Style: graceful palace romance serif with soft cursive ligatures,
+long elegant swashes, rounded terminals like rose petals, refined Korean title lettering.
+
+Letter Treatment: rose-gold metallic fill with ivory enamel highlights,
+thin polished gold outline, subtle pink glow inside the strokes, velvety shadow depth.
+
+Decoration Motif: blooming garden roses wrapped around the corners of the title,
+delicate thornless vine curls, tiny pearl drops, a small wax-seal heart ornament below the center.
+
+Color Palette: rose gold (#D9A06F), blush pink (#F5B8C8), ivory (#FFF7EA), soft leaf green (#BFD8B8),
+champagne gold (#E8C87A), warm brown shadow (#5A3520).
+
+Atmosphere: romantic royal promise, soft garden fantasy, elegant feminine sparkle.
+Technical: ultra-sharp clean title logo, balanced composition, 4K Korean web novel cover quality.
+
+[NEGATIVE]
+people, characters, faces, body parts, blurry text, distorted letters, misspelled text,
+watermark, low resolution, gothic horror, aggressive brush strokes, weapon imagery`},
+    {num:'R03', title:'진주빛 드레스의 밤', sub:'진주 자개 + 무도회 리본 장식',
+     prompt:`[POSITIVE]
+((web novel Korean title typography design)), title text concept: "진주빛 드레스의 밤",
+soft moonlit ballroom backdrop, pearlescent silk curtain, gentle chandelier bokeh, creamy lavender shadows.
+
+Font Style: luxurious high-contrast serif with ribbon-like calligraphic curves,
+refined ball invitation lettering, elegant Korean characters with airy spacing.
+
+Letter Treatment: pearlescent nacre fill, opal shimmer across each stroke,
+thin silver-gold bevel, tiny glints like polished pearls, translucent lavender inner glow.
+
+Decoration Motif: pearl chain draped above the title, satin ribbon curls around the lower strokes,
+small crystal star charms and a delicate cameo brooch at the center.
+
+Color Palette: pearl white (#F8F5EE), soft lavender (#CDB7E8), champagne gold (#E8C87A),
+moon silver (#DDE6F2), blush shadow (#A87991).
+
+Atmosphere: dreamy ballroom romance, quiet luxury, soft sparkling princess mood.
+Technical: crisp readable Korean title, ornate but clean, professional 4K ebook cover lettering.
+
+[NEGATIVE]
+people, characters, faces, body parts, blurry text, distorted letters, misspelled text,
+watermark, low resolution, scary mood, blood, weapons, grunge decay`}
+  ]},
+  { key:'꽃정원', icon:'🌸', font:"'Fraunces', serif", data:[
+    {num:'F01', title:'비밀 정원에서 만나요', sub:'수채화 꽃잎 + 아이비 리본 프레임',
+     prompt:`[POSITIVE]
+((web novel Korean title typography design)), title text concept: "비밀 정원에서 만나요",
+soft watercolor garden backdrop, pale cream paper glow, blurred pink petals, spring morning atmosphere.
+
+Font Style: romantic botanical serif mixed with gentle handwritten curves,
+soft petal-shaped terminals, flowing Korean title lettering with fresh airy spacing.
+
+Letter Treatment: deep forest green ink fill with watercolor bleed at the edges,
+thin antique gold outline, subtle dewdrop highlights on selected strokes.
+
+Decoration Motif: ivy vines forming a light oval frame behind the letters,
+small white daisies, pink cherry blossoms, tiny pressed flower accents, satin green ribbon at the bottom.
+
+Color Palette: forest green (#2F5D3A), antique gold (#C9A24A), petal pink (#F6B8C9),
+ivory cream (#FFF5E6), fresh leaf green (#A8D8A0), soft lilac (#D9C7F0).
+
+Atmosphere: secret garden romance, fresh spring sparkle, cozy fairytale invitation.
+Technical: ultra-clean typography, delicate botanical detail, 4K Korean ebook cover quality.
+
+[NEGATIVE]
+people, characters, faces, body parts, blurry text, distorted letters, misspelled text,
+watermark, low resolution, horror, martial arts, weapons, dark cult aesthetic`},
+    {num:'F02', title:'봄바람 편지', sub:'편지지 질감 + 꽃잎 바람 타이포',
+     prompt:`[POSITIVE]
+((web novel Korean title typography design)), title text concept: "봄바람 편지",
+warm cream stationery backdrop, faint envelope texture, soft sunlight through lace curtain, drifting flower petals.
+
+Font Style: gentle handwritten serif with elegant editorial balance,
+letters feel like a love letter written with a soft nib pen, graceful Korean calligraphy influence.
+
+Letter Treatment: warm rose-brown ink fill, champagne foil accent on stroke edges,
+slight watercolor bloom, tiny glimmer particles along curves.
+
+Decoration Motif: floating petals crossing behind the title, small sealed envelope icon,
+thin ribbon line under the text, pressed flower corners like handmade stationery.
+
+Color Palette: rose brown (#9B5C62), champagne gold (#E8C87A), cream paper (#FFF3DD),
+petal pink (#F8C7D8), spring yellow (#FFE9A8), soft sage (#B7CFA8).
+
+Atmosphere: tender spring romance, handwritten warmth, pretty diary-like softness.
+Technical: legible Korean title, delicate print-ready composition, 4K detail.
+
+[NEGATIVE]
+people, characters, faces, body parts, blurry text, distorted letters, misspelled text,
+watermark, low resolution, horror, aggressive ink, blood, weapons`},
+    {num:'F03', title:'라일락 티파티', sub:'라일락 꽃송이 + 찻잔 금박 장식',
+     prompt:`[POSITIVE]
+((web novel Korean title typography design)), title text concept: "라일락 티파티",
+pastel tea garden backdrop, lilac blossoms out of focus, porcelain teacup glow, soft afternoon light.
+
+Font Style: whimsical elegant serif with soft curled terminals,
+slightly playful but refined Korean title lettering, tea-party invitation mood.
+
+Letter Treatment: lavender enamel fill with white sugar-glaze highlights,
+thin gold foil outline, soft translucent shadow, tiny crystal-like sugar sparkles.
+
+Decoration Motif: lilac flower clusters around the upper corners,
+small porcelain teacup silhouette below, lace doily arc behind the title, golden teaspoon flourish.
+
+Color Palette: lilac purple (#C7A8E8), sugar white (#FFFDF7), pastel mint (#CFEAD9),
+champagne gold (#D8B86A), soft cream (#FFF0D8), tea brown shadow (#7A5A3A).
+
+Atmosphere: sweet garden tea party, soft pastel fantasy, charming and airy.
+Technical: ultra-sharp readable Korean typography, ornate but uncluttered, 4K ebook quality.
+
+[NEGATIVE]
+people, characters, faces, body parts, blurry text, distorted letters, misspelled text,
+watermark, low resolution, scary, cyberpunk, weapon, dark gritty mood`}
+  ]},
+  { key:'보석', icon:'💎', font:"'Noto Serif KR', serif", data:[
+    {num:'J01', title:'유리구두 연금술', sub:'크리스탈 구두 + 오팔빛 글자',
+     prompt:`[POSITIVE]
+((web novel Korean title typography design)), title text concept: "유리구두 연금술",
+pale opal laboratory backdrop, crystal shelves blurred softly, pearly magical glow, clean fantasy alchemy mood.
+
+Font Style: elegant fantasy serif with crystal-cut edges,
+refined Korean title lettering, slightly angular but soft enough for romantic fantasy.
+
+Letter Treatment: translucent glass-crystal fill, opal rainbow refraction inside every stroke,
+thin platinum-gold outline, sparkling bevel highlights like cut gemstones.
+
+Decoration Motif: tiny glass slipper charm above the title, alchemy circle made of pearl dots,
+small starbursts and crystal shards floating around the letters without covering them.
+
+Color Palette: opal white (#F8F8FF), crystal blue (#BDE9FF), pastel rainbow shimmer, platinum (#D8DDE8),
+soft gold (#E8C87A), pale violet shadow (#A8A0D8).
+
+Atmosphere: magical princess alchemy, glass slipper sparkle, luminous and delicate.
+Technical: ultra-sharp vector-quality Korean lettering, clean readable composition, 4K cover asset.
+
+[NEGATIVE]
+people, characters, faces, body parts, blurry text, distorted letters, misspelled text,
+watermark, low resolution, horror, grime, weapons, dark martial tone`},
+    {num:'J02', title:'별사탕 보석함', sub:'캔디 보석 + 반짝이는 파스텔 금속',
+     prompt:`[POSITIVE]
+((web novel Korean title typography design)), title text concept: "별사탕 보석함",
+pastel candy jewel box backdrop, creamy pink velvet, tiny sugar stars, soft sparkling studio light.
+
+Font Style: cute-luxury rounded serif with elegant swashes,
+Korean lettering feels polished like a dessert boutique logo, sweet but premium.
+
+Letter Treatment: glossy candy enamel fill, pink-to-gold gradient, translucent sugar crystal texture,
+small star-shaped highlights embedded inside the strokes.
+
+Decoration Motif: jewel box lid outline behind the title, star candy beads, tiny ribbon knots,
+small heart-shaped gem at the center bottom, delicate gold dotted border.
+
+Color Palette: strawberry pink (#FFB3C7), buttercream (#FFF1C8), soft gold (#EBC76D),
+aqua mint (#B8F0E0), candy purple (#D5B8FF), caramel shadow (#8A5A28).
+
+Atmosphere: sweet magical jewelry box, pastel luxury, playful sparkle.
+Technical: crisp Korean title logo, clean candy-like material rendering, 4K ebook cover quality.
+
+[NEGATIVE]
+people, characters, faces, body parts, blurry text, distorted letters, misspelled text,
+watermark, low resolution, scary, bloody, gritty, weapon motifs`},
+    {num:'J03', title:'오팔빛 마법서', sub:'오팔 보석 + 금장 책등 프레임',
+     prompt:`[POSITIVE]
+((web novel Korean title typography design)), title text concept: "오팔빛 마법서",
+soft cream magical library backdrop, blurred gilded book spines, floating pearl dust, warm candle glow.
+
+Font Style: refined literary serif with magical calligraphic flourishes,
+book-cover classic Korean lettering, graceful thick-to-thin contrast and soft ornamental terminals.
+
+Letter Treatment: opal gemstone fill with rainbow iridescent sheen,
+antique gold bevel, tiny embossed star patterns on the letter faces, warm luminous core.
+
+Decoration Motif: ornate spellbook frame behind the title, small bookmark ribbon,
+moon-and-star corner ornaments, pearl chain accents along the lower curve.
+
+Color Palette: opal cream (#F8F2E8), antique gold (#C89B3C), soft rainbow highlights,
+warm candle amber (#F4C76A), muted lavender (#C5B5E8), cocoa shadow (#4D3322).
+
+Atmosphere: pretty magical library, scholarly fairytale, warm shimmering wonder.
+Technical: ultra-sharp Korean typography, print-ready title asset, 4K detail.
+
+[NEGATIVE]
+people, characters, faces, body parts, blurry text, distorted letters, misspelled text,
+watermark, low resolution, horror, cyberpunk, weapons, harsh neon`}
+  ]},
+  { key:'달빛', icon:'🌙', font:"'Fraunces', serif", data:[
+    {num:'M01', title:'달 아래 잠든 왕관', sub:'월광 실버 + 왕관 실루엣',
+     prompt:`[POSITIVE]
+((web novel Korean title typography design)), title text concept: "달 아래 잠든 왕관",
+deep indigo moonlit sky backdrop, soft cloud haze, faint pearl stars, quiet royal night atmosphere.
+
+Font Style: dreamy moonlit serif with slender elegant curves,
+letters have soft sleeping-beauty fairytale rhythm, refined Korean title lettering.
+
+Letter Treatment: silver-white moonstone fill, pale blue inner glow,
+thin champagne-gold rim light, gentle halo around each letter, subtle pearl shimmer.
+
+Decoration Motif: small sleeping crown silhouette resting above the center,
+crescent moon arc behind the title, tiny stars scattered like jewelry, delicate veil ribbon under text.
+
+Color Palette: moon silver (#E8EEF8), pale blue (#B8D4FF), champagne gold (#E8C87A),
+deep indigo (#0A1030), pearl white (#FAFAF2), soft lavender shadow (#7A6FA8).
+
+Atmosphere: quiet royal fairytale, moonlit elegance, soft dreamy romance.
+Technical: ultra-clean readable Korean title, luminous 4K ebook cover typography.
+
+[NEGATIVE]
+people, characters, faces, body parts, blurry text, distorted letters, misspelled text,
+watermark, low resolution, horror, monsters, weapons, aggressive dark fantasy`},
+    {num:'M02', title:'은하수 우체국', sub:'별편지 + 은하수 리본 타이포',
+     prompt:`[POSITIVE]
+((web novel Korean title typography design)), title text concept: "은하수 우체국",
+soft starlit postal room backdrop, pale blue night window glow, floating envelopes, dreamy galaxy dust.
+
+Font Style: whimsical literary serif with handwritten postal-stamp charm,
+Korean letters are elegant and readable, with soft rounded endings like folded paper.
+
+Letter Treatment: midnight blue enamel fill with silver glitter gradient,
+thin pearl-white highlight on top edges, tiny constellation dots embedded in strokes.
+
+Decoration Motif: small winged envelope above the title, milky way ribbon sweeping behind letters,
+postmark circle, tiny star seals, delicate paper airplane flourish.
+
+Color Palette: midnight blue (#1A2A5A), silver white (#F0F4FF), soft cyan (#B8E0FF),
+lavender (#C9B8FF), pale gold (#E8C87A), warm paper cream (#FFF1D8).
+
+Atmosphere: celestial mailroom fantasy, gentle wonder, cute magical night.
+Technical: crisp Korean title, balanced ornamental layout, 4K professional cover quality.
+
+[NEGATIVE]
+people, characters, faces, body parts, blurry text, distorted letters, misspelled text,
+watermark, low resolution, scary, dystopian, weapon, gritty realism`},
+    {num:'M03', title:'밤하늘 리본상점', sub:'새틴 리본 + 별빛 간판 느낌',
+     prompt:`[POSITIVE]
+((web novel Korean title typography design)), title text concept: "밤하늘 리본상점",
+velvety night boutique backdrop, blurred ribbon shelves, soft fairy lights, gentle starry glow.
+
+Font Style: elegant boutique serif with ribbon-like swashes,
+soft flowing Korean lettering, pretty handmade shop sign mood with premium fantasy polish.
+
+Letter Treatment: satin ribbon texture inside each stroke, navy-to-lavender gradient,
+thin gold foil trim, soft fabric sheen and tiny star glints along the curves.
+
+Decoration Motif: ribbon bow wrapping the first and last characters,
+small hanging star charms, crescent moon tag, scalloped gold frame behind the title.
+
+Color Palette: velvet navy (#111A3A), lavender (#BFA8FF), satin pink (#F0A8C8),
+champagne gold (#E8C87A), star white (#FFFDF7), soft violet shadow (#4B3A70).
+
+Atmosphere: magical ribbon boutique, soft night market fantasy, cozy sparkling sweetness.
+Technical: ultra-sharp Korean title logo, clean background-integrated ornament composition, 4K detail.
+
+[NEGATIVE]
+people, characters, faces, body parts, blurry text, distorted letters, misspelled text,
+watermark, low resolution, horror, blood, weapons, harsh cyberpunk`}
+  ]}
+];
+
+/* 투명 배경 모드
+   제목 줄은 유지하고, 배경/환경 설명 블록만 제거해
+   타이포와 직접 장식만 남긴 프롬프트로 변환합니다. */
+const TRANSP_PREPEND = `transparent background, PNG alpha channel, subject fully isolated on pure transparency,
+no background, no scene, no surface, no paper, no texture behind the letters,
+only the title text and its direct decorations exist, alpha fully transparent outside the typography,
+`;
+const TRANSP_NEG = `\nsolid background, colored background, gradient background, textured background, paper background, wall, sky, surface, opaque background, any background fill.`;
+const BG_PREPEND = `full background included, opaque image, complete scene backdrop, no alpha channel, no transparent cutout,
+`;
+const BG_NEG = `\ntransparent background, PNG alpha, alpha channel, cut-out style, isolated typography only, no background, empty background, checkerboard transparency.`;
+
+function makeTransparent(raw){
+  const ni = raw.indexOf('\n[NEGATIVE]');
+  let pos = ni > -1 ? raw.slice(0, ni) : raw;
+  const neg = ni > -1 ? raw.slice(ni) : '';
+
+  const out = [];
+  let dropping = false, sawTitle = false;
+  pos.split('\n').forEach(ln => {
+    const t = ln.trim();
+    if (!sawTitle && /title[^"]*"/.test(t)) {      // keep the title line, start dropping after it
+      out.push(ln); sawTitle = true; dropping = true; return;
+    }
+    if (dropping) {
+      if (/^font style:/i.test(t)) { dropping = false; out.push(ln); return; } // env block ends here
+      return;                                       // drop environment / background lines (and blanks)
+    }
+    out.push(ln);
+  });
+  pos = out.join('\n');
+
+  // also drop any "<colour> background (#hex)" token left inside a Color Palette line
+  pos = pos.replace(/,?\s*[\w\s\-]+ background \(#[0-9A-Fa-f]{3,8}[^)]*\)/gi, '');
+  pos = pos.replace(/,\s*,/g, ',').replace(/\(\s*,\s*/g, '(').replace(/,\s*\)/g, ')');
+
+  pos = pos.replace('[POSITIVE]\n', '[POSITIVE]\n' + TRANSP_PREPEND);
+  return pos + neg + TRANSP_NEG;
+}
+
+function makeBackground(raw){
+  let out = raw.trimEnd();
+
+  // 배경 포함 모드에서는 원본 프롬프트 안에 남아 있던 투명/분리형 힌트를 제거합니다.
+  out = out.replace(/clean transparent-ready ornament separation/gi, 'clean background-integrated ornament composition');
+  out = out.replace(/transparent-ready/gi, 'background-integrated');
+  out = out.replace(/transparent-ready ornament separation/gi, 'background-integrated ornament composition');
+
+  // Positive 맨 앞에 불투명 배경 의도를 먼저 못박아 모델이 투명 PNG처럼 굴지 않게 합니다.
+  out = out.replace('[POSITIVE]\n', '[POSITIVE]\n' + BG_PREPEND);
+  return out + BG_NEG;
+}
+
+let tState = { genre:GENRES[0], item:null, withBg:false, weight:700 };
+
+function customTitle(){ return document.getElementById('title-input').value.trim(); }
+function applyTitle(p, itemTitle){
+  const c = customTitle();
+  if(!c) return p;
+  const esc = itemTitle.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return p.replace(new RegExp('"'+esc+'"','g'), '"'+c+'"');
+}
+function buildPrompt(){
+  if(!tState.item) return '';
+  const raw = tState.item.prompt;
+  const p = tState.withBg ? makeBackground(raw) : makeTransparent(raw);
+  return applyTitle(p, tState.item.title);
+}
+
+const GENRE_NAMES = {'로판':'로맨스 판타지','꽃정원':'꽃정원 판타지','보석':'보석 마법','달빛':'달빛 동화'};
+function renderGtabs(){
+  const wrap = document.getElementById('gtabs');
+  wrap.innerHTML = '';
+  GENRES.forEach(g=>{
+    const b = document.createElement('button');
+    b.className = 'gtab' + (g===tState.genre?' active':'');
+    b.innerHTML = `${g.icon} ${g.key}`;
+    b.addEventListener('click', ()=>{ tState.genre = g; renderGtabs(); renderTcards(); updatePreview(); });
+    wrap.appendChild(b);
+  });
+}
+function renderTcards(){
+  const grid = document.getElementById('t-grid');
+  grid.innerHTML = '';
+  tState.genre.data.forEach(it=>{
+    const c = document.createElement('button');
+    c.className = 't-card';
+    c.innerHTML = `<div class="t-num">${it.num}</div>
+      <div class="t-cardtitle">${customTitle() || it.title}</div>
+      <div class="t-cardsub">${it.sub}</div>
+      <div class="t-go">프롬프트 열기 →</div>`;
+    c.addEventListener('click', ()=>openModal(it));
+    grid.appendChild(c);
+  });
+}
+
+/* 프롬프트 모달 */
+const overlay = document.getElementById('overlay');
+function paintMode(){
+  const tg = document.getElementById('btn-toggle');
+  const chip = document.getElementById('m-mode');
+  tg.classList.toggle('on', tState.withBg);
+  chip.classList.toggle('bg', tState.withBg);
+  tg.innerHTML = tState.withBg ? '🫧 투명 PNG용으로 바꾸기' : '🌄 배경 포함으로 바꾸기';
+  chip.textContent = tState.withBg ? '🌄 출력: 배경 포함 · 불투명 이미지' : '🫧 출력: 투명 PNG용 프롬프트';
+}
+function openModal(it){
+  tState.item = it; tState.withBg = false;
+  document.getElementById('m-num').textContent = `${it.num} · ${GENRE_NAMES[tState.genre.key]}`;
+  document.getElementById('m-title').textContent = customTitle() || it.title;
+  paintMode();
+  document.getElementById('m-prompt').textContent = buildPrompt();
+  overlay.classList.add('on');
+}
+function closeModal(){ overlay.classList.remove('on'); }
+document.getElementById('btn-toggle').addEventListener('click', ()=>{
+  tState.withBg = !tState.withBg;
+  paintMode();
+  document.getElementById('m-prompt').textContent = buildPrompt();
+});
+document.getElementById('btn-mcopy').addEventListener('click', ()=>copyText(buildPrompt()));
+document.getElementById('btn-mclose').addEventListener('click', closeModal);
+overlay.addEventListener('click', e=>{ if(e.target===overlay) closeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+/* 제목 입력 + 굵기 + 미리보기 */
+function updatePreview(){
+  const t = customTitle() || '제목을 입력하세요';
+  const pv = document.getElementById('preview-text');
+  pv.textContent = t;
+  pv.style.fontFamily = tState.genre.font;
+  pv.style.fontWeight = tState.weight;
+  pv.style.opacity = customTitle() ? '1' : '.4';
+}
+document.getElementById('title-input').addEventListener('input', ()=>{
+  updatePreview(); renderTcards();
+  if(overlay.classList.contains('on') && tState.item){
+    document.getElementById('m-title').textContent = customTitle() || tState.item.title;
+    document.getElementById('m-prompt').textContent = buildPrompt();
+  }
+});
+document.getElementById('title-clear').addEventListener('click', ()=>{
+  document.getElementById('title-input').value=''; updatePreview(); renderTcards();
+});
+const wt = document.getElementById('wt-slider');
+wt.addEventListener('input', ()=>{
+  tState.weight = +wt.value;
+  document.getElementById('wt-val').textContent = wt.value;
+  updatePreview();
+});
+
+/* ---------- 초기 실행 ---------- */
+renderSlots();
+ASMR_SLOTS.forEach(s=>aState.idx[s.key]=Math.floor(Math.random()*s.items.length));
+renderSlots();
+generateASMR(false);
+renderBank();
+renderGtabs();
+renderTcards();
+updatePreview();
+</script>
+</body>
+</html>
