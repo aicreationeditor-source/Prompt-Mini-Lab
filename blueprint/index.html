@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>청사진 — 범용 보고서 파이프라인</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bp:#16324F;        /* 청사진 남색 */
+  --bp2:#1C3D5F;
+  --line:#3D5C7E;      /* 도면 선 */
+  --chalk:#EDF2F7;     /* 백묵 */
+  --dim:#8FA8C0;
+  --hot:#FF8A3D;       /* 활성 스테이션 주황 */
+  --ok:#5BD6A9;
+  --mono:'D2Coding','JetBrains Mono','Consolas',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Apple SD Gothic Neo','Pretendard','Malgun Gothic',sans-serif;
+  background:var(--bp);color:var(--chalk);font-size:15px;line-height:1.6;
+  background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+  background-size:28px 28px}
+.wrap{max-width:1000px;margin:0 auto;padding:1.6rem 1rem 6rem}
+header{margin-bottom:1.4rem}
+h1{font-size:1.35rem;letter-spacing:.04em}
+h1 small{color:var(--dim);font-weight:400;font-size:.8rem;margin-left:.6rem}
+
+/* ── 파이프라인 레일 ── */
+.rail{display:flex;align-items:center;gap:.4rem;margin:1.2rem 0 1.6rem;flex-wrap:wrap}
+.station{display:flex;flex-direction:column;align-items:center;gap:.15rem;cursor:pointer;
+  border:1.5px solid var(--line);border-radius:8px;padding:.55rem 1rem;background:var(--bp2);min-width:8.5rem}
+.station[aria-current=true]{border-color:var(--hot)}
+.station .no{font-family:var(--mono);font-size:.7rem;color:var(--hot)}
+.station .nm{font-weight:700;font-size:.92rem}
+.station .cnt{font-family:var(--mono);font-size:.78rem;color:var(--dim)}
+.pipe{flex:1;min-width:1.4rem;height:2px;background:var(--line);position:relative}
+.pipe::after{content:'▶';position:absolute;right:-2px;top:-0.62em;color:var(--line);font-size:.7rem}
+.station:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+
+section[hidden]{display:none}
+.panel{background:var(--bp2);border:1px solid var(--line);border-radius:8px;padding:1rem;margin-bottom:1rem}
+h2{font-size:1rem;margin-bottom:.5rem;color:var(--hot);font-family:var(--mono);letter-spacing:.03em}
+.note{font-size:.82rem;color:var(--dim);margin-bottom:.7rem}
+
+.btn{font-family:inherit;font-size:.87rem;font-weight:700;cursor:pointer;border-radius:6px;
+  background:var(--hot);color:#16324F;border:none;padding:.55rem 1.1rem}
+.btn.ghost{background:transparent;color:var(--chalk);border:1.5px solid var(--line)}
+.btn.mini{padding:.25rem .6rem;font-size:.78rem}
+.btn:focus-visible{outline:2px solid var(--chalk);outline-offset:2px}
+.btn-row{display:flex;gap:.5rem;flex-wrap:wrap;margin:.7rem 0}
+
+input[type=text],select,input[type=number]{
+  font-family:inherit;font-size:.86rem;color:var(--chalk);background:var(--bp);
+  border:1px solid var(--line);border-radius:5px;padding:.4rem .55rem}
+input:focus,select:focus{outline:2px solid var(--hot);outline-offset:-1px}
+select option{background:var(--bp2)}
+
+/* 드롭존 */
+.drop{border:2px dashed var(--line);border-radius:8px;padding:2rem 1rem;text-align:center;
+  color:var(--dim);cursor:pointer;transition:border-color .15s}
+.drop.on,.drop:hover{border-color:var(--hot);color:var(--chalk)}
+.srcs{margin-top:.7rem;display:flex;flex-direction:column;gap:.3rem}
+.srcs div{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.8rem;
+  border-bottom:1px dashed var(--line);padding:.25rem 0}
+
+/* 표 */
+.tbl-scroll{overflow:auto;max-height:19rem;margin-top:.6rem;border:1px solid var(--line);border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:.78rem;font-family:var(--mono)}
+th{position:sticky;top:0;background:var(--bp);color:var(--hot);text-align:left;
+  padding:.35rem .5rem;border-bottom:1px solid var(--hot);white-space:nowrap}
+td{padding:.3rem .5rem;border-bottom:1px solid var(--line);white-space:nowrap;color:var(--chalk)}
+
+/* 규칙 카드 */
+.rule{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;background:var(--bp);
+  border:1px solid var(--line);border-radius:6px;padding:.55rem .6rem;margin-bottom:.4rem}
+.rule .tag{font-family:var(--mono);font-size:.72rem;color:var(--hot);border:1px solid var(--hot);
+  border-radius:4px;padding:0 .35rem}
+.rule .stat{font-family:var(--mono);font-size:.74rem;color:var(--ok);margin-left:auto}
+.rule .stat.drop{color:#FF7B7B}
+
+/* 보고서 */
+.report{margin-bottom:1.4rem}
+.report h3{font-size:.95rem;margin-bottom:.4rem}
+.rep-flex{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+@media(max-width:760px){.rep-flex{grid-template-columns:1fr}}
+canvas{width:100%;background:var(--bp);border:1px solid var(--line);border-radius:6px}
+footer{margin-top:2rem;font-size:.75rem;color:var(--dim);border-top:1px solid var(--line);padding-top:.7rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>청사진 <small>BLUEPRINT — 범용 보고서 파이프라인 · 설정 주도 · 브라우저에서 완결</small></h1>
+  <div class="rail">
+    <div class="station" role="button" tabindex="0" data-st="1" aria-current="true">
+      <span class="no">STEP 1</span><span class="nm">통합</span><span class="cnt" id="cnt1">0건</span></div>
+    <div class="pipe"></div>
+    <div class="station" role="button" tabindex="0" data-st="2" aria-current="false">
+      <span class="no">STEP 2</span><span class="nm">전처리</span><span class="cnt" id="cnt2">—</span></div>
+    <div class="pipe"></div>
+    <div class="station" role="button" tabindex="0" data-st="3" aria-current="false">
+      <span class="no">STEP 3</span><span class="nm">보고서</span><span class="cnt" id="cnt3">—</span></div>
+  </div>
+</header>
+
+<!-- STEP 1 -->
+<section id="st1">
+  <div class="panel">
+    <h2>STEP 1 — 원본 통합</h2>
+    <p class="note">CSV·XLSX 여러 개를 떨구면 헤더 기준으로 세로 통합한다. 원본 추적용 <b style="color:var(--hot)">_출처</b> 열이 자동으로 붙는다. 원본은 절대 수정되지 않는다 — 네 VBA의 "_통합데이터 이후 수정 금지" 원칙 그대로.</p>
+    <div class="drop" id="drop">파일을 여기로 끌어오거나 클릭해서 선택 (CSV / XLSX, 복수 가능)</div>
+    <input type="file" id="fileIn" multiple accept=".csv,.xlsx,.xls" hidden/>
+    <div class="srcs" id="srcList"></div>
+    <div class="btn-row" style="align-items:center">
+      <label style="font-size:.83rem;display:flex;gap:.35rem;align-items:center"><input type="checkbox" id="deltaOn" style="accent-color:var(--hot)"/> 증분 모드 — 기준 파일에 없는 키만 남김</label>
+      <select id="deltaKey"><option value="">키 열 선택</option></select>
+      <span class="note" id="deltaStat" style="margin:0"></span>
+    </div>
+    <div class="btn-row"><button class="btn ghost" id="btnClear">전부 비우기</button></div>
+    <div class="tbl-scroll" id="mergedPrev"></div>
+  </div>
+</section>
+
+<!-- STEP 2 -->
+<section id="st2" hidden>
+  <div class="panel">
+    <h2>STEP 2 — 전처리 규칙</h2>
+    <p class="note">규칙은 위에서 아래로 순서대로 적용된다. 각 규칙 옆에 통과/제외 건수가 찍혀서 어느 규칙이 데이터를 깎아먹는지 바로 보인다.</p>
+    <div class="btn-row">
+      <select id="ruleType">
+        <option value="filter">필터 — 조건에 맞는 행만 남김/제외</option>
+        <option value="rename">헤더 변경</option>
+        <option value="trim">공백 정리</option>
+        <option value="replace">값 치환</option>
+        <option value="fill">빈값 채움</option>
+        <option value="split">열 분할</option>
+      </select>
+      <button class="btn" id="btnAddRule">규칙 추가</button>
+      <button class="btn ghost" id="btnApply">전체 적용 ▶</button>
+    </div>
+    <div id="ruleList"></div>
+    <div class="tbl-scroll" id="procPrev"></div>
+    <div class="btn-row">
+      <button class="btn ghost" id="btnShowExc">제외분 보기 (0건)</button>
+      <button class="btn ghost" id="btnExcCsv">제외분 CSV</button>
+    </div>
+    <div class="tbl-scroll" id="excPrev" hidden></div>
+  </div>
+</section>
+
+<!-- STEP 3 -->
+<section id="st3" hidden>
+  <div class="panel">
+    <h2>STEP 3 — 보고서 설정</h2>
+    <p class="note">네 VBA의 _차트설정 시트에 해당한다. 그룹 기준·집계·차트 유형을 정하면 표+차트가 생성된다.</p>
+    <div class="btn-row">
+      <button class="btn" id="btnAddRep">보고서 추가</button>
+      <button class="btn ghost" id="btnBuild">보고서 생성 ▶</button>
+      <button class="btn ghost" id="btnRepCsv">전체 표 CSV</button>
+    </div>
+    <div id="repCfgList"></div>
+  </div>
+  <div id="reports"></div>
+</section>
+
+<div class="panel">
+  <h2>설정 보존 — 재사용이 "급"의 핵심</h2>
+  <p class="note">전처리 규칙 + 보고서 설정을 JSON으로 내보내고, 다음에 새 데이터에 그대로 불러온다. 네 VBA에서 설정 시트가 하던 역할.</p>
+  <div class="btn-row">
+    <button class="btn ghost" id="btnExpCfg">설정 내보내기 (.json)</button>
+    <button class="btn ghost" id="btnImpCfg">설정 가져오기</button>
+    <input type="file" id="cfgIn" accept=".json" hidden/>
+  </div>
+</div>
+
+<footer>청사진 v1.0 — 설정 주도 · 원본 불변 · 단일 파일. XLSX 파싱만 CDN(SheetJS)을 쓰므로 오프라인에선 CSV로 쓰면 된다.</footer>
+</div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+/* ═══ 상태 ═══ */
+let sources = [];        // {name, headers, rows}
+let merged = {headers:[], rows:[]};
+let processed = {headers:[], rows:[]};
+let rules = [];          // {type, ...params, stat}
+let repCfgs = [];        // {name, group, val, agg, sort, chart, active}
+let excluded = [];       // 필터로 제외된 행 보존 {rule, headers, row}
+const PALETTE = ['#FF8A3D','#5BD6A9','#7EB6FF','#F2D06B','#D98CF0','#FF7B7B','#63E0DC','#B0C97E'];
+
+/* ═══ 스테이션 전환 ═══ */
+document.querySelectorAll('.station').forEach(s=>{
+  const go = ()=>{ 
+    document.querySelectorAll('.station').forEach(x=>x.setAttribute('aria-current', x===s));
+    [1,2,3].forEach(n=>$('st'+n).hidden = String(n)!==s.dataset.st);
+  };
+  s.addEventListener('click', go);
+  s.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();go();} });
+});
+
+/* ═══ STEP 1: 파일 적재 ═══ */
+$('drop').addEventListener('click', ()=>$('fileIn').click());
+$('drop').addEventListener('dragover', e=>{e.preventDefault();$('drop').classList.add('on');});
+$('drop').addEventListener('dragleave', ()=>$('drop').classList.remove('on'));
+$('drop').addEventListener('drop', e=>{e.preventDefault();$('drop').classList.remove('on');loadFiles(e.dataTransfer.files);});
+$('fileIn').addEventListener('change', e=>loadFiles(e.target.files));
+$('btnClear').addEventListener('click', ()=>{sources=[];merge();});
+
+function loadFiles(list){
+  [...list].forEach(f=>{
+    const ext = f.name.split('.').pop().toLowerCase();
+    if(ext==='csv'){
+      f.text().then(t=>{ addSource(f.name, parseCsv(t)); });
+    } else if(ext==='xlsx'||ext==='xls'){
+      if(typeof XLSX==='undefined'){ alert('오프라인이라 XLSX 파서를 못 불렀다. CSV로 저장해서 넣어라.'); return; }
+      f.arrayBuffer().then(buf=>{
+        const wb = XLSX.read(buf,{type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const arr = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        addSource(f.name, arr.map(r=>r.map(String)));
+      });
+    }
+  });
+}
+function parseCsv(text){
+  const rows=[]; let row=[], cur='', q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){ row.push(cur); cur=''; }
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n')i++; row.push(cur);cur=''; if(row.some(x=>x!=='')) rows.push(row); row=[]; }
+    else cur+=c;
+  }
+  if(cur!==''||row.length){ row.push(cur); if(row.some(x=>x!=='')) rows.push(row); }
+  return rows.map(r=>r.map(v=>String(v).replace(/^\uFEFF/,'')));
+}
+function addSource(name, arr){
+  if(!arr.length) return;
+  sources.push({name, headers:arr[0], rows:arr.slice(1), role:'new'});
+  merge();
+}
+function merge(){
+  // 헤더 합집합 + _출처
+  const hs = []; sources.forEach(s=>s.headers.forEach(h=>{ if(!hs.includes(h)) hs.push(h); }));
+  merged.headers = [...hs, '_출처'];
+  const rowsOf = list => { const out=[];
+    list.forEach(s=>{ const idx=s.headers.map(h=>hs.indexOf(h));
+      s.rows.forEach(r=>{ const nr=new Array(hs.length).fill('');
+        r.forEach((v,i)=>{ if(idx[i]>=0) nr[idx[i]]=v; });
+        nr.push(s.name); out.push(nr); }); });
+    return out; };
+  // 증분 키 선택지 갱신 (선택 보존)
+  const prevKey=$('deltaKey').value;
+  $('deltaKey').innerHTML='<option value="">키 열 선택</option>'+hs.map(h=>`<option ${h===prevKey?'selected':''}>${esc(h)}</option>`).join('');
+  const bases=sources.filter(s=>s.role==='base');
+  const key=$('deltaKey').value, ki=hs.indexOf(key);
+  $('deltaStat').textContent='';
+  if($('deltaOn').checked && ki>=0 && bases.length){
+    const baseKeys=new Set(rowsOf(bases).map(r=>String(r[ki]).trim()));
+    const news=rowsOf(sources.filter(s=>s.role!=='base'));
+    merged.rows=news.filter(r=>!baseKeys.has(String(r[ki]).trim()));
+    $('deltaStat').textContent=`신규 ${news.length}건 중 추가분 ${merged.rows.length}건 — 기준과 겹침 ${news.length-merged.rows.length}건 제거`;
+  } else {
+    merged.rows=rowsOf(sources);
+    if($('deltaOn').checked) $('deltaStat').textContent = bases.length ? '키 열을 선택하라.' : '파일을 "기준"으로 지정한 게 없다.';
+  }
+  $('srcList').innerHTML = sources.map((s,i)=>`<div><span><select data-role="${i}" style="margin-right:.5rem"><option value="new" ${s.role!=='base'?'selected':''}>신규</option><option value="base" ${s.role==='base'?'selected':''}>기준</option></select>${esc(s.name)}</span><span>${s.rows.length}행 · ${s.headers.length}열</span></div>`).join('');
+  $('cnt1').textContent = merged.rows.length+'건';
+  renderTable($('mergedPrev'), merged, 8);
+  processed = {headers:[], rows:[]};
+  $('cnt2').textContent='—'; $('cnt3').textContent='—';
+}
+$('deltaOn').addEventListener('change', merge);
+$('deltaKey').addEventListener('change', merge);
+$('srcList').addEventListener('change', e=>{
+  if(e.target.dataset.role!=null){ sources[+e.target.dataset.role].role=e.target.value; merge(); }
+});
+
+/* ═══ STEP 2: 규칙 엔진 ═══ */
+const RULE_DEFS = {
+  filter:  {tag:'필터', fields:[['col','열'],['op','연산',['포함','미포함','같음','다름','빈값제외','이상','이하']],['val','값']]},
+  rename:  {tag:'헤더', fields:[['col','기존 헤더'],['val','새 헤더']]},
+  trim:    {tag:'공백', fields:[['col','열']]},
+  replace: {tag:'치환', fields:[['col','열'],['val','찾을 값'],['val2','바꿀 값']]},
+  fill:    {tag:'채움', fields:[['col','열'],['val','채울 값']]},
+  split:   {tag:'분할', fields:[['col','열'],['val','구분자'],['val2','새 열 이름(구분자 뒤 조각)']]},
+};
+$('btnAddRule').addEventListener('click', ()=>{
+  rules.push({type:$('ruleType').value, col:'', op:'포함', val:'', val2:'', stat:''});
+  renderRules();
+});
+function renderRules(){
+  const hs = merged.headers;
+  $('ruleList').innerHTML = rules.map((r,i)=>{
+    const def = RULE_DEFS[r.type];
+    const f = def.fields.map(([k,label,opts])=>{
+      if(k==='col') return `<select data-i="${i}" data-k="col">${hs.map(h=>`<option ${r.col===h?'selected':''}>${esc(h)}</option>`).join('')}</select>`;
+      if(opts) return `<select data-i="${i}" data-k="${k}">${opts.map(o=>`<option ${r[k]===o?'selected':''}>${o}</option>`).join('')}</select>`;
+      return `<input type="text" data-i="${i}" data-k="${k}" value="${esc(r[k]||'')}" placeholder="${label}" style="width:9rem"/>`;
+    }).join(' ');
+    return `<div class="rule"><span class="tag">${def.tag}</span>${f}
+      <button class="btn mini ghost" data-up="${i}">↑</button>
+      <button class="btn mini ghost" data-dn="${i}">↓</button>
+      <button class="btn mini ghost" data-del="${i}">✕</button>
+      <span class="stat ${/-\d/.test(r.stat)?'drop':''}">${r.stat}</span></div>`;
+  }).join('');
+}
+$('ruleList').addEventListener('input', e=>{
+  const i=e.target.dataset.i, k=e.target.dataset.k;
+  if(i!=null && k) rules[i][k]=e.target.value;
+});
+$('ruleList').addEventListener('click', e=>{
+  const b=e.target;
+  if(b.dataset.del!=null){ rules.splice(+b.dataset.del,1); renderRules(); }
+  if(b.dataset.up!=null){ const i=+b.dataset.up; if(i>0){[rules[i-1],rules[i]]=[rules[i],rules[i-1]];renderRules();} }
+  if(b.dataset.dn!=null){ const i=+b.dataset.dn; if(i<rules.length-1){[rules[i+1],rules[i]]=[rules[i],rules[i+1]];renderRules();} }
+});
+$('btnApply').addEventListener('click', ()=>{
+  if(!merged.rows.length){ alert('STEP 1에서 데이터를 먼저 넣어라.'); return; }
+  let hs=[...merged.headers], rows=merged.rows.map(r=>[...r]);
+  excluded=[];
+  rules.forEach((rl,ri)=>{
+    const before=rows.length;
+    const ci = hs.indexOf(rl.col);
+    if(ci<0 && rl.type!=='rename'){ rl.stat='열 없음'; return; }
+    if(rl.type==='filter'){
+      const test = r=>{
+        const v=String(r[ci]);
+        switch(rl.op){
+          case '포함': return v.includes(rl.val);
+          case '미포함': return !v.includes(rl.val);
+          case '같음': return v===rl.val;
+          case '다름': return v!==rl.val;
+          case '빈값제외': return v.trim()!=='';
+          case '이상': return parseFloat(v)>=parseFloat(rl.val);
+          case '이하': return parseFloat(v)<=parseFloat(rl.val);
+        } return true;
+      };
+      const kept=[];
+      rows.forEach(r=>{ if(test(r)) kept.push(r);
+        else excluded.push({rule:`규칙#${ri+1} ${rl.col} ${rl.op} ${rl.val}`, headers:[...hs], row:r}); });
+      rows=kept;
+      rl.stat = `${before}→${rows.length} (${rows.length-before})`;
+    }
+    else if(rl.type==='rename'){ const i2=hs.indexOf(rl.col); if(i2>=0){hs[i2]=rl.val; rl.stat='변경됨';} else rl.stat='열 없음'; }
+    else if(rl.type==='trim'){ rows.forEach(r=>r[ci]=String(r[ci]).trim().replace(/\s+/g,' ')); rl.stat='적용'; }
+    else if(rl.type==='replace'){ let n=0; rows.forEach(r=>{ const nv=String(r[ci]).split(rl.val).join(rl.val2); if(nv!==r[ci])n++; r[ci]=nv; }); rl.stat=n+'건 치환'; }
+    else if(rl.type==='fill'){ let n=0; rows.forEach(r=>{ if(String(r[ci]).trim()===''){r[ci]=rl.val;n++;} }); rl.stat=n+'건 채움'; }
+    else if(rl.type==='split'){
+      hs.push(rl.val2||rl.col+'_2');
+      rows.forEach(r=>{ const parts=String(r[ci]).split(rl.val); r[ci]=parts[0]||''; r.push(parts.slice(1).join(rl.val)||''); });
+      rl.stat='열 추가';
+    }
+  });
+  processed={headers:hs,rows};
+  $('cnt2').textContent = rows.length+'건'+(excluded.length?` (제외 ${excluded.length})`:'');
+  renderRules();
+  renderTable($('procPrev'), processed, 8);
+  $('btnShowExc').textContent=`제외분 보기 (${excluded.length}건)`;
+  $('excPrev').hidden=true;
+});
+$('btnShowExc').addEventListener('click', ()=>{
+  const el=$('excPrev');
+  el.hidden=!el.hidden;
+  if(!el.hidden){
+    if(!excluded.length){ el.innerHTML='<p class="note" style="padding:.5rem">제외된 행이 없다. 전체 적용을 먼저 실행하라.</p>'; return; }
+    const hs0=excluded[0].headers;
+    el.innerHTML=`<table><thead><tr><th>_제외규칙</th>${hs0.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <tbody>${excluded.slice(0,50).map(x=>`<tr><td>${esc(x.rule)}</td>${x.row.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
+      +(excluded.length>50?`<p class="note" style="padding:.4rem">…외 ${excluded.length-50}행 — 전체는 CSV로</p>`:'');
+  }
+});
+$('btnExcCsv').addEventListener('click', ()=>{
+  if(!excluded.length){ alert('제외된 행이 없다. 전체 적용을 먼저 실행하라.'); return; }
+  let csv='\uFEFF';
+  // 규칙 단계별로 헤더가 다를 수 있어 그룹 단위로 기록
+  const groups=new Map();
+  excluded.forEach(x=>{ const k=x.rule+'|'+x.headers.join(','); 
+    if(!groups.has(k)) groups.set(k,{rule:x.rule,headers:x.headers,rows:[]});
+    groups.get(k).rows.push(x.row); });
+  groups.forEach(g=>{
+    csv+=`_제외규칙,${g.headers.map(qq).join(',')}\n`;
+    csv+=g.rows.map(r=>qq(g.rule)+','+r.map(v=>qq(String(v))).join(',')).join('\n')+'\n\n';
+  });
+  dl(csv,'excluded_rows.csv','text/csv;charset=utf-8');
+});
+
+/* ═══ STEP 3: 보고서 ═══ */
+$('btnAddRep').addEventListener('click', ()=>{
+  repCfgs.push({name:'보고서 '+(repCfgs.length+1), group:'', val:'', agg:'건수', sort:'값↓', chart:'막대', active:true});
+  renderRepCfgs();
+});
+function renderRepCfgs(){
+  const hs = processed.headers.length?processed.headers:merged.headers;
+  $('repCfgList').innerHTML = repCfgs.map((c,i)=>`
+    <div class="rule">
+      <input type="text" data-i="${i}" data-k="name" value="${esc(c.name)}" style="width:8rem"/>
+      <select data-i="${i}" data-k="group"><option value="">그룹 기준</option>${hs.map(h=>`<option ${c.group===h?'selected':''}>${esc(h)}</option>`).join('')}</select>
+      <select data-i="${i}" data-k="agg">${['건수','합계','평균','최대','최소'].map(a=>`<option ${c.agg===a?'selected':''}>${a}</option>`).join('')}</select>
+      <select data-i="${i}" data-k="val"><option value="">값 열(건수면 불필요)</option>${hs.map(h=>`<option ${c.val===h?'selected':''}>${esc(h)}</option>`).join('')}</select>
+      <select data-i="${i}" data-k="sort">${['값↓','값↑','이름'].map(s=>`<option ${c.sort===s?'selected':''}>${s}</option>`).join('')}</select>
+      <select data-i="${i}" data-k="chart">${['막대','선','도넛'].map(s=>`<option ${c.chart===s?'selected':''}>${s}</option>`).join('')}</select>
+      <label style="font-size:.8rem"><input type="checkbox" data-i="${i}" data-k="active" ${c.active?'checked':''}/> 활성</label>
+      <button class="btn mini ghost" data-del="${i}">✕</button>
+    </div>`).join('');
+}
+$('repCfgList').addEventListener('input', e=>{
+  const i=e.target.dataset.i, k=e.target.dataset.k;
+  if(i==null||!k) return;
+  repCfgs[i][k] = k==='active' ? e.target.checked : e.target.value;
+});
+$('repCfgList').addEventListener('click', e=>{
+  if(e.target.dataset.del!=null){ repCfgs.splice(+e.target.dataset.del,1); renderRepCfgs(); }
+});
+function aggregate(cfg){
+  const d = processed.rows.length?processed:merged;
+  const gi=d.headers.indexOf(cfg.group), vi=d.headers.indexOf(cfg.val);
+  if(gi<0) return null;
+  const m=new Map();
+  d.rows.forEach(r=>{
+    const k=String(r[gi])||'(빈값)';
+    if(!m.has(k)) m.set(k,{sum:0,n:0,max:-Infinity,min:Infinity});
+    const o=m.get(k); o.n++;
+    if(vi>=0){ const v=parseFloat(String(r[vi]).replace(/[,\s]/g,''))||0; o.sum+=v; o.max=Math.max(o.max,v); o.min=Math.min(o.min,v); }
+  });
+  let items=[...m.entries()].map(([k,o])=>({k, v:
+    cfg.agg==='건수'?o.n : cfg.agg==='합계'?o.sum : cfg.agg==='평균'?(o.n?o.sum/o.n:0) : cfg.agg==='최대'?o.max : o.min }));
+  if(cfg.sort==='값↓') items.sort((a,b)=>b.v-a.v);
+  else if(cfg.sort==='값↑') items.sort((a,b)=>a.v-b.v);
+  else items.sort((a,b)=>a.k.localeCompare(b.k,'ko'));
+  return items.slice(0,30);
+}
+let lastReports=[];
+$('btnBuild').addEventListener('click', ()=>{
+  const box=$('reports'); box.innerHTML=''; lastReports=[];
+  const act = repCfgs.filter(c=>c.active && c.group);
+  if(!act.length){ box.innerHTML='<p class="note">활성 보고서가 없다. 보고서를 추가하고 그룹 기준을 골라라.</p>'; $('cnt3').textContent='0개'; return; }
+  act.forEach((cfg,ri)=>{
+    const items=aggregate(cfg); if(!items) return;
+    lastReports.push({cfg,items});
+    const div=document.createElement('div'); div.className='panel report';
+    const fmt = v => Number.isInteger(v)? v.toLocaleString('ko') : v.toLocaleString('ko',{maximumFractionDigits:1});
+    div.innerHTML=`<h3>${esc(cfg.name)} <small style="color:var(--dim)">— ${esc(cfg.group)} 별 ${cfg.agg}${cfg.val?' ('+esc(cfg.val)+')':''}</small></h3>
+      <div class="rep-flex">
+        <div class="tbl-scroll"><table><thead><tr><th>${esc(cfg.group)}</th><th style="text-align:right">${cfg.agg}</th></tr></thead>
+        <tbody>${items.map(it=>`<tr><td>${esc(it.k)}</td><td style="text-align:right">${fmt(it.v)}</td></tr>`).join('')}</tbody></table></div>
+        <canvas id="ch${ri}" width="460" height="300"></canvas>
+      </div>`;
+    box.appendChild(div);
+    drawChart(document.getElementById('ch'+ri), cfg.chart, items);
+  });
+  $('cnt3').textContent = lastReports.length+'개';
+});
+
+/* ═══ 캔버스 차트 (라이브러리 없음) ═══ */
+function drawChart(cv, type, items){
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.font='11px D2Coding, monospace';
+  const data=items.slice(0,12);
+  const maxV=Math.max(...data.map(d=>d.v),1);
+  if(type==='막대'){
+    const pad=40, bw=(W-pad*1.5)/data.length;
+    data.forEach((d,i)=>{
+      const h=(H-pad*1.6)*(d.v/maxV), x=pad+i*bw, y=H-pad-h;
+      ctx.fillStyle=PALETTE[i%PALETTE.length]; ctx.fillRect(x, y, bw*0.7, h);
+      ctx.fillStyle='#EDF2F7'; ctx.textAlign='center';
+      ctx.fillText(d.k.slice(0,6), x+bw*0.35, H-pad+14);
+      ctx.fillText(short(d.v), x+bw*0.35, y-4);
+    });
+    axis(ctx,pad,H-pad,W,H);
+  } else if(type==='선'){
+    const pad=40, sw=(W-pad*1.5)/Math.max(data.length-1,1);
+    ctx.strokeStyle='#FF8A3D'; ctx.lineWidth=2; ctx.beginPath();
+    data.forEach((d,i)=>{
+      const x=pad+i*sw, y=H-pad-(H-pad*1.6)*(d.v/maxV);
+      i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+    });
+    ctx.stroke();
+    data.forEach((d,i)=>{
+      const x=pad+i*sw, y=H-pad-(H-pad*1.6)*(d.v/maxV);
+      ctx.fillStyle='#FF8A3D'; ctx.beginPath(); ctx.arc(x,y,3.5,0,7); ctx.fill();
+      ctx.fillStyle='#EDF2F7'; ctx.textAlign='center';
+      ctx.fillText(d.k.slice(0,6), x, H-pad+14); ctx.fillText(short(d.v), x, y-8);
+    });
+    axis(ctx,pad,H-pad,W,H);
+  } else { // 도넛
+    const cx=W*0.38, cy=H/2, R=Math.min(W,H)*0.32, r=R*0.55;
+    const tot=data.reduce((s,d)=>s+d.v,0)||1;
+    let a=-Math.PI/2;
+    data.forEach((d,i)=>{
+      const a2=a+2*Math.PI*(d.v/tot);
+      ctx.fillStyle=PALETTE[i%PALETTE.length];
+      ctx.beginPath(); ctx.arc(cx,cy,R,a,a2); ctx.arc(cx,cy,r,a2,a,true); ctx.fill();
+      a=a2;
+    });
+    ctx.textAlign='left';
+    data.forEach((d,i)=>{
+      const y=24+i*20;
+      ctx.fillStyle=PALETTE[i%PALETTE.length]; ctx.fillRect(W*0.7, y-9, 10,10);
+      ctx.fillStyle='#EDF2F7';
+      ctx.fillText(`${d.k.slice(0,8)} ${(d.v/tot*100).toFixed(0)}%`, W*0.7+15, y);
+    });
+  }
+}
+function axis(ctx,px,py,W,H){ ctx.strokeStyle='#3D5C7E'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(px,20); ctx.lineTo(px,py); ctx.lineTo(W-15,py); ctx.stroke(); }
+function short(v){ return v>=1e8?(v/1e8).toFixed(1)+'억':v>=1e4?(v/1e4).toFixed(0)+'만':Number.isInteger(v)?v:v.toFixed(1); }
+
+/* ═══ 내보내기 ═══ */
+$('btnRepCsv').addEventListener('click', ()=>{
+  if(!lastReports.length){ alert('보고서를 먼저 생성하라.'); return; }
+  let csv='\uFEFF';
+  lastReports.forEach(({cfg,items})=>{
+    csv+=`${cfg.name}\n${cfg.group},${cfg.agg}\n`;
+    csv+=items.map(it=>`${qq(it.k)},${it.v}`).join('\n')+'\n\n';
+  });
+  dl(csv,'reports.csv','text/csv;charset=utf-8');
+});
+$('btnExpCfg').addEventListener('click', ()=>{
+  dl(JSON.stringify({rules:rules.map(({stat,...r})=>r), repCfgs},null,2),'pipeline_config.json','application/json');
+});
+$('btnImpCfg').addEventListener('click', ()=>$('cfgIn').click());
+$('cfgIn').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f) return;
+  f.text().then(t=>{
+    try{ const c=JSON.parse(t);
+      rules=(c.rules||[]).map(r=>({...r,stat:''})); repCfgs=c.repCfgs||[];
+      renderRules(); renderRepCfgs();
+    }catch{ alert('JSON 형식이 아니다.'); }
+  });
+});
+
+/* ═══ 유틸 ═══ */
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function qq(v){return /[",\n]/.test(v)?'"'+String(v).replace(/"/g,'""')+'"':v;}
+function dl(content,name,type){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type})); a.download=name; a.click();
+  URL.revokeObjectURL(a.href);
+}
+function renderTable(el, d, n){
+  if(!d.rows.length){ el.innerHTML=''; return; }
+  el.innerHTML=`<table><thead><tr>${d.headers.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead>
+    <tbody>${d.rows.slice(0,n).map(r=>`<tr>${r.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
+    + (d.rows.length>n?`<p class="note" style="padding:.4rem">…외 ${d.rows.length-n}행</p>`:'');
+}
+renderRepCfgs();
+</script>
+</body>
+</html>
