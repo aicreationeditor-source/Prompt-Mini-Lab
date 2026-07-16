@@ -1,0 +1,17 @@
+{
+  "rules": [
+    {"type":"trim","col":"고객군","op":"포함","val":"","val2":""},
+    {"type":"replace","col":"상태","op":"포함","val":"완 료","val2":"완료"},
+    {"type":"fill","col":"담당자","op":"포함","val":"미배정","val2":""},
+    {"type":"split","col":"지역센터","op":"포함","val":" / ","val2":"센터"},
+    {"type":"filter","col":"상태","op":"미포함","val":"취소","val2":""},
+    {"type":"filter","col":"결제금액","op":"이상","val":"300000","val2":""},
+    {"type":"rename","col":"상품군","op":"포함","val":"서비스군","val2":""}
+  ],
+  "repCfgs": [
+    {"name":"센터별 순매출 규모","group":"센터","val":"결제금액","agg":"합계","sort":"값↓","chart":"막대","active":true},
+    {"name":"유입채널 구성","group":"유입채널","val":"","agg":"건수","sort":"값↓","chart":"도넛","active":true},
+    {"name":"서비스군별 만족도","group":"서비스군","val":"만족도","agg":"평균","sort":"값↓","chart":"선","active":true},
+    {"name":"담당자별 평균 처리시간","group":"담당자","val":"처리시간","agg":"평균","sort":"값↓","chart":"막대","active":true}
+  ]
+}
